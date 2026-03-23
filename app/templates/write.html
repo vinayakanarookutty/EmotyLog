@@ -1,0 +1,114 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto flex gap-8 fade-in h-[85vh] items-stretch">
+    
+    <div class="flex-[2] bg-[#f4e4bc] text-[#2c1a12] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-sm relative flex flex-col" 
+         style="background-image: url('https://www.transparenttextures.com/patterns/aged-paper.png'); border-left: 1px solid #ccc;">
+        
+        <div class="absolute top-6 right-6 text-sm font-bold opacity-60 border-2 border-[#8b4513] text-[#8b4513] px-3 py-1 transform -rotate-2" style="font-family: 'Courier New', monospace;">
+            {{ current_date.strftime('%B %d, %Y') }}
+        </div>
+
+        <h2 class="text-4xl font-serif mb-2 text-[#3e2723] italic">Dear Diary...</h2>
+        <div class="w-full h-px bg-[#8b4513] opacity-30 mb-6"></div>
+
+        <form method="POST" action="{{ url_for('main.write') }}" class="flex-grow flex flex-col min-h-0">
+            <textarea id="diaryContent" name="content" 
+                class="flex-grow w-full bg-transparent border-none resize-none focus:ring-0 text-xl leading-[3rem] p-0 font-serif text-[#3e2723]" 
+                style="font-family: 'Satisfy', cursive; line-height: 3rem; background-image: linear-gradient(#bcaaa4 1px, transparent 1px); background-size: 100% 3rem;"
+                placeholder="The ink flows..."></textarea>
+            
+            <div class="mt-6 pt-4 border-t border-[#8b4513]/20 flex justify-between items-center">
+                
+                <button type="button" onclick="startDictation()" 
+                    class="flex items-center gap-2 px-5 py-2 bg-[#d7ccc8] text-[#5d4037] rounded shadow-sm hover:bg-[#d4af37] hover:text-white transition font-serif border border-[#a1887f]">
+                    <span>🎙️</span> 
+                    <span id="micStatus" class="font-bold text-sm tracking-wide">Dictate</span>
+                </button>
+
+                <button type="submit" 
+                    class="flex items-center gap-2 px-8 py-2 bg-[#8b0000] text-white rounded shadow-[0_4px_10px_rgba(139,0,0,0.4)] hover:bg-[#a52a2a] transition transform hover:-translate-y-1 border border-[#500000]">
+                    <span class="text-xl">✒️</span>
+                    <span class="font-bold text-sm tracking-widest uppercase">Sign & Save</span>
+                </button>
+            </div>
+            
+            <input type="hidden" name="emotion_data" id="emotionData">
+        </form>
+    </div>
+
+    <div class="flex-1 flex flex-col gap-6">
+        
+        <div class="glass p-1 rounded-sm border-4 border-[#5d4037] shadow-2xl relative">
+            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#5d4037] text-amber-100 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded">Reflection</div>
+            
+            <div class="relative bg-black overflow-hidden aspect-[4/5] border border-[#3e2723]">
+                <video id="videoFeed" autoplay playsinline class="w-full h-full object-cover sepia-[0.3] opacity-90"></video>
+                <canvas id="photoCanvas" class="hidden absolute top-0 left-0 w-full h-full"></canvas>
+            </div>
+
+            <div class="flex mt-2 gap-1">
+                <button onclick="startCamera()" class="flex-1 bg-[#3e2723] text-amber-100 text-xs py-2 hover:bg-[#4e342e] transition font-serif">Open Shutter</button>
+                <button onclick="capturePhoto()" class="flex-1 bg-[#d4af37] text-[#2c1a12] text-xs py-2 hover:bg-[#fdd835] font-bold transition font-serif">Capture</button>
+            </div>
+            <p id="emotionResult" class="mt-2 text-center text-[#d4af37] font-serif italic text-sm min-h-[1.5em]"></p>
+        </div>
+
+        <div class="glass p-6 rounded-sm border-l-4 border-[#d4af37] flex-1 flex flex-col justify-center text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-full bg-[#d4af37] opacity-5"></div>
+            <div class="text-3xl mb-3 opacity-80">📜</div>
+            <h3 class="text-[#d4af37] text-sm font-bold mb-2 uppercase tracking-widest">Muse's Whisper</h3>
+            <p class="text-amber-100/80 text-sm font-serif italic leading-loose">
+                "The ink is the blood of thought. Let your feelings flow onto the page, for the machine spirit watches with a gentle eye."
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function startDictation() {
+        if (window.hasOwnProperty('webkitSpeechRecognition')) {
+            var recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = "en-US";
+            recognition.start();
+            let btnText = document.getElementById('micStatus');
+            btnText.innerText = "Listening...";
+            recognition.onresult = function(e) {
+                document.getElementById('diaryContent').value += " " + e.results[0][0].transcript;
+                btnText.innerText = "Dictate";
+            };
+        } else { alert("Not supported."); }
+    }
+
+    let video = document.getElementById('videoFeed');
+    let canvas = document.getElementById('photoCanvas');
+    let stream = null;
+
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            canvas.classList.add('hidden');
+            video.classList.remove('hidden');
+        } catch (err) { alert("Camera Error"); }
+    }
+
+    function capturePhoto() {
+        if (!stream) return alert("Open shutter first.");
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        video.classList.add('hidden'); canvas.classList.remove('hidden');
+        canvas.toBlob(async (blob) => {
+            let formData = new FormData(); formData.append("photo", blob);
+            document.getElementById('emotionResult').innerText = "Divining emotion...";
+            let res = await fetch('/analyze_photo', {method: "POST", body: formData});
+            let data = await res.json();
+            document.getElementById('emotionResult').innerText = data.result;
+        }, 'image/jpeg');
+    }
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Satisfy&display=swap" rel="stylesheet">
+{% endblock %}

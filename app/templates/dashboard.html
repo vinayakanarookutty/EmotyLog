@@ -1,0 +1,168 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    .book-container { display: flex; justify-content: center; align-items: center; height: 85vh; perspective: 1800px; }
+    
+    #diary-book {
+        width: 900px; height: 600px;
+        background: url('https://www.transparenttextures.com/patterns/dark-leather.png'); /* Dark Leather Texture */
+        background-color: #2c1a12;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+        border-radius: 4px;
+    }
+
+    .page {
+        background-color: #f4e4bc;
+        background-image: url('https://www.transparenttextures.com/patterns/aged-paper.png');
+        padding: 30px;
+        font-family: 'Lora', serif;
+        color: #2c1a12;
+        overflow: hidden;
+        border-right: 1px solid #d7ccc8;
+        box-shadow: inset -5px 0 10px rgba(0,0,0,0.1); /* Inner shadow for depth */
+    }
+
+    .page.cover {
+        background: #3e2723; /* Deep Leather */
+        color: #d4af37; /* Gold Text */
+        display: flex; align-items: center; justify-content: center; text-align: center;
+        border: 4px solid #1a0f0a;
+        box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+    }
+
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 15px; }
+    .cal-day {
+        padding: 8px; text-align: center; border: 1px solid #d7ccc8; cursor: pointer; transition: 0.3s; font-size: 0.9em;
+    }
+    .cal-day:hover { background: #d7ccc8; }
+    .cal-day.active { background: #8b4513; color: #fff; border-color: #5d4037; }
+
+    .stamp {
+        border: 3px double #8b0000; color: #8b0000; padding: 5px 10px;
+        transform: rotate(-10deg); display: inline-block; font-weight: bold; font-family: 'Courier New';
+    }
+</style>
+
+<div class="book-container fade-in">
+    <div id="diary-book">
+        
+        <div class="page cover">
+            <div>
+                <div class="border-2 border-dashed border-[#d4af37] p-8 rounded">
+                    <h1 class="text-5xl font-serif tracking-widest mb-4 drop-shadow-md">JOURNAL</h1>
+                    <div class="w-16 h-1 bg-[#d4af37] mx-auto mb-4"></div>
+                    <p class="mt-8 font-serif italic text-amber-200">Property of {{ session.username }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="page">
+            <h2 class="text-2xl font-bold border-b-2 border-[#8b4513] pb-2 mb-4 text-[#3e2723]">Chronology</h2>
+            
+            <div class="mb-6 p-2 bg-[#d7ccc8] border border-[#a1887f] rounded text-xs text-[#3e2723]">
+                <strong>⏳ Temporal Shift:</strong>
+                <form action="{{ url_for('api.set_time') }}" method="POST" class="inline-flex ml-2">
+                    <input type="date" name="date" value="{{ current_date.strftime('%Y-%m-%d') }}" class="bg-transparent border-b border-[#3e2723] w-28">
+                    <button class="ml-2 text-[#8b0000] font-bold hover:underline">GO</button>
+                </form>
+            </div>
+
+            <h3 class="text-center font-bold mb-2 text-[#5d4037] uppercase tracking-widest">{{ current_date.strftime('%B %Y') }}</h3>
+            <div class="calendar-grid font-serif">
+                {% for i in range(1, 31) %}
+                {% set year = current_date.year %}
+                {% set month = current_date.month %}
+                {% set day_str = "%s-%02d-%02d"|format(year, month, i) %}
+                <div class="cal-day {% if i == current_date.day %}active{% endif %}" onclick="loadEntry('{{ day_str }}')">{{ i }}</div>
+                {% endfor %}
+            </div>
+            <p class="mt-8 text-xs italic text-[#8d6e63] text-center">"Touch a date to recall the memory..."</p>
+        </div>
+
+        <div class="page relative">
+            <div id="right-page-date" class="absolute top-4 right-4 text-xs font-bold text-[#8d6e63]">{{ current_date.strftime('%Y-%m-%d') }}</div>
+            <div id="entry-content-area" class="h-full">
+                {% if today_entry %}
+                <div class="h-full flex flex-col">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="stamp">{{ today_entry.emotion }}</div>
+                        {% if (current_date - today_entry.date).days >= 2 %}
+                        <div class="stamp" style="border-color: #444; color: #444; transform: rotate(5deg);">ARCHIVED</div>
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow font-serif text-lg leading-relaxed text-[#3e2723] italic">
+                        {{ today_entry.content }}
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-[#d7ccc8] text-sm italic text-[#8b4513]">
+                        Oracle's Whisper: "{{ today_entry.motivation }}"
+                    </div>
+                </div>
+                {% else %}
+                <div class="h-full flex flex-col items-center justify-center text-center opacity-50">
+                    <div class="text-6xl mb-4 grayscale opacity-30">🖋️</div>
+                    <p class="mb-4 font-serif italic text-[#5d4037]">The page is yet to be written.</p>
+                    <a href="{{ url_for('main.write') }}" class="px-6 py-2 bg-[#3e2723] text-[#f4e4bc] rounded shadow hover:bg-[#5d4037] transition font-serif text-sm uppercase tracking-widest">Pick up Quill</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="page">
+            <h2 class="text-xl font-bold mb-4 text-[#3e2723]">Weekly Saga</h2>
+            <div id="story-content" class="text-sm leading-loose text-[#3e2723]">
+                <button onclick="loadStory()" class="w-full py-10 border-2 border-dashed border-[#a1887f] text-[#8d6e63] hover:border-[#3e2723] hover:text-[#3e2723] transition font-serif italic">
+                    Weave the Week's Tale
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $("#diary-book").turn({ width: 900, height: 600, autoCenter: true, duration: 1200, gradients: true, elevation: 50 });
+    });
+
+    async function loadEntry(dateStr) {
+        let container = document.getElementById('entry-content-area');
+        let dateHeader = document.getElementById('right-page-date');
+        container.style.opacity = '0.5';
+        try {
+            let res = await fetch(`/get_entry/${dateStr}`);
+            let data = await res.json();
+            if (data.found) {
+                let lockedHtml = data.is_locked ? `<div class="stamp" style="border-color: #444; color: #444; transform: rotate(5deg);">ARCHIVED</div>` : ``;
+                container.innerHTML = `
+                    <div class="h-full flex flex-col fade-in">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="stamp">${data.emotion}</div> ${lockedHtml}
+                        </div>
+                        <div class="flex-grow font-serif text-lg leading-relaxed text-[#3e2723] italic">
+                            ${data.content}
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-[#d7ccc8] text-sm italic text-[#8b4513]">
+                            Oracle's Whisper: "${data.motivation}"
+                        </div>
+                    </div>`;
+            } else {
+                container.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center opacity-50 fade-in">
+                        <div class="text-6xl mb-4 grayscale opacity-30">🖋️</div>
+                        <p class="mb-4 font-serif italic text-[#5d4037]">No record for this day.</p>
+                    </div>`;
+            }
+        } catch (e) { console.error(e); }
+        dateHeader.innerText = dateStr;
+        container.style.opacity = '1';
+    }
+
+    async function loadStory() {
+        let div = document.getElementById('story-content');
+        div.innerHTML = "Weaving...";
+        let res = await fetch('/generate_weekly_story');
+        let data = await res.json();
+        div.innerHTML = `<p class='font-serif italic'>${data.story}</p>`;
+    }
+</script>
+{% endblock %}

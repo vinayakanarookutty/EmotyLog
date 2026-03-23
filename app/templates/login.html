@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="min-h-[70vh] flex items-center justify-center">
+    
+    <div class="tilt-card glass p-10 rounded-2xl w-full max-w-md text-center transform transition hover:scale-105 duration-500 relative overflow-hidden">
+        
+        <div class="absolute -top-10 -left-10 w-32 h-32 bg-purple-600 rounded-full blur-[80px] opacity-40"></div>
+        <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-pink-600 rounded-full blur-[80px] opacity-40"></div>
+
+        <h2 class="text-4xl font-bold mb-2 text-white">ACCESS</h2>
+        <p class="text-gray-400 mb-8 text-sm tracking-widest">IDENTITY VERIFICATION</p>
+
+        <form method="POST" class="space-y-6 relative z-10">
+            <div class="relative">
+                <input type="text" name="username" required 
+                    class="w-full bg-black/30 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-purple-500 transition-colors peer placeholder-transparent"
+                    placeholder="Username">
+                <label class="absolute left-4 top-3 text-gray-500 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:top-3 peer-focus:-top-6 peer-focus:text-purple-400 peer-focus:text-xs">Username</label>
+            </div>
+
+            <div class="relative">
+                <input type="password" name="password" required 
+                    class="w-full bg-black/30 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-purple-500 transition-colors peer placeholder-transparent"
+                    placeholder="Password">
+                <label class="absolute left-4 top-3 text-gray-500 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:top-3 peer-focus:-top-6 peer-focus:text-purple-400 peer-focus:text-xs">Password</label>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-purple-900/50 transition-all transform hover:-translate-y-1">
+                INITIATE SESSION
+            </button>
+        </form>
+
+        <p class="mt-6 text-gray-500 text-sm">
+            No ID? <a href="{{ url_for('auth.register') }}" class="text-purple-400 hover:text-white transition">Create New Protocol</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

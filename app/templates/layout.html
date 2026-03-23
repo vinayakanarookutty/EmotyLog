@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoti Log</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+    <style>
+        /* VINTAGE COLOR PALETTE */
+        :root {
+            --paper-cream: #fdf6e3;
+            --leather-brown: #3e2723;
+            --gold-accent: #d4af37;
+            --ink-black: #1a0f0a;
+        }
+
+        body {
+            font-family: 'Lora', serif;
+            color: var(--paper-cream);
+            overflow-x: hidden;
+            background-color: #1a0f0a;
+        }
+
+        /* 3D CANVAS */
+        #vanta-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+        }
+
+        /* AMBER GLASS STYLE */
+        .glass {
+            background: rgba(44, 26, 18, 0.75); /* Dark Brown Glass */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(212, 175, 55, 0.2); /* Gold Border */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        /* TYPOGRAPHY */
+        h1, h2, h3, .brand-font {
+            font-family: 'Cinzel', serif;
+            letter-spacing: 1px;
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(26, 15, 10, 0.5); }
+        ::-webkit-scrollbar-thumb { background: #8d6e63; border-radius: 4px; border: 1px solid #3e2723; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1887f; }
+
+        .fade-in { animation: fadeIn 1s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div id="vanta-canvas"></div>
+
+    <nav class="glass sticky top-0 z-50 px-8 py-4 flex justify-between items-center border-b border-yellow-900/30">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-600 to-yellow-800 shadow-[0_0_15px_rgba(212,175,55,0.4)]"></div>
+            <h1 class="text-2xl font-bold text-amber-100 drop-shadow-md">
+                Emoti<span class="text-yellow-600">Log</span>
+            </h1>
+        </div>
+        
+        <div class="flex gap-8 text-xs font-bold uppercase tracking-widest text-amber-200/80">
+            {% if session.user_id %}
+                <a href="{{ url_for('main.dashboard') }}" class="hover:text-white hover:underline decoration-yellow-600 underline-offset-4 transition-all">Journal</a>
+                <a href="{{ url_for('main.write') }}" class="hover:text-white hover:underline decoration-yellow-600 underline-offset-4 transition-all">Quill</a>
+                <a href="{{ url_for('main.chat') }}" class="hover:text-white hover:underline decoration-yellow-600 underline-offset-4 transition-all">Oracle</a>
+                <a href="{{ url_for('auth.logout') }}" class="text-red-400 hover:text-red-300">Close Book</a>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="hover:text-white">Login</a>
+                <a href="{{ url_for('auth.register') }}" class="border border-yellow-600 px-4 py-1 rounded hover:bg-yellow-900/50 transition">Sign Registry</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="flex-grow container mx-auto px-4 py-8 relative z-10">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="mb-6 p-4 rounded glass text-amber-200 text-center fade-in border-l-4 border-yellow-600">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="text-center py-6 text-yellow-900/60 text-xs font-serif relative z-10">
+        <p>EST. 2026 • PRIVATE ARCHIVE</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. VANTA FOG - Configured for "Dusty Library / Coffee" Vibe
+            VANTA.FOG({
+                el: "#vanta-canvas",
+                mouseControls: true,
+                touchControls: true,
+                gyroControls: false,
+                minHeight: 200.00,
+                minWidth: 200.00,
+                highlightColor: 0xd4af37, // Gold Dust
+                midtoneColor: 0x5d4037,   // Coffee Brown
+                lowlightColor: 0x24130c,  // Deep Leather
+                baseColor: 0x0f0907,      // Almost Black
+                blurFactor: 0.85,         // Smokey
+                speed: 0.8,               // Slow & Calm
+                zoom: 0.8
+            });
+
+            // 2. TILT - Subtle movement
+            if (window.VanillaTilt) {
+                VanillaTilt.init(document.querySelectorAll(".tilt-card"), {
+                    max: 8,
+                    speed: 500,
+                    glare: true,
+                    "max-glare": 0.1,
+                    scale: 1.02
+                });
+            }
+        });
+    </script>
+</body>
+</html>
