@@ -29,11 +29,14 @@ def generate_weekly_story_route():
 
 @api_bp.route('/analyze_photo', methods=['POST'])
 def analyze_photo_route():
-    if 'photo' not in request.files: return jsonify({'error': 'No file'})
-    file = request.files['photo']
-    result = analyze_image_emotion_ai(file)
-    return jsonify({'result': result})
+    if 'photo' not in request.files:
+        return jsonify({'result': 'No file'}), 400
 
+    file = request.files['photo']
+
+    result = analyze_image_emotion_ai(file)
+
+    return jsonify({'result': result})
 @api_bp.route('/chat_assistant', methods=['POST'])
 def chat_assistant():
     data = request.json

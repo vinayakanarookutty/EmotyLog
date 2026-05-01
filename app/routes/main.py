@@ -3,7 +3,7 @@ from bson.objectid import ObjectId
 import datetime  # <--- THIS WAS MISSING
 from app.extensions import mongo
 from app.utils import get_current_date, get_ai_emotion_and_motivation
-
+from app.utils import get_weekly_advice
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/dashboard')
@@ -79,3 +79,46 @@ def edit_entry(entry_id):
         flash('This entry is too old to edit.')
         
     return redirect(url_for('main.dashboard'))
+
+
+@main_bp.route('/weekly_emotions')
+def weekly_emotions():
+    if 'user_id' not in session:
+        return {"error": "Unauthorized"}, 401
+
+    user_id = session['user_id']
+    offset = int(request.args.get('offset', 0))
+
+    today = get_current_date()
+
+    start_of_week = today - datetime.timedelta(days=today.weekday())
+    start_of_week += datetime.timedelta(weeks=offset)
+
+    start_datetime = datetime.datetime(
+        start_of_week.year,
+        start_of_week.month,
+        start_of_week.day
+    )
+
+    end_datetime = start_datetime + datetime.timedelta(days=7)
+
+    entries = list(mongo.db.entries.find({
+        'user_id': user_id,
+        'date': {'$gte': start_datetime, '$lt': end_datetime}
+    }))
+
+    emotion_count = {}
+
+    for e in entries:
+        emotion = e.get('emotion', 'Unknown').strip().capitalize()
+        emotion_count[emotion] = emotion_count.get(emotion, 0) + 1
+
+    # 🔥 Generate advice
+    advice = get_weekly_advice(emotion_count)
+
+    return {
+        "week_start": start_datetime.strftime('%Y-%m-%d'),
+        "week_end": (end_datetime - datetime.timedelta(days=1)).strftime('%Y-%m-%d'),
+        "emotions": emotion_count,
+        "advice": advice
+    }

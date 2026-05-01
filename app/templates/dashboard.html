@@ -108,61 +108,127 @@
             </div>
         </div>
 
-        <div class="page">
-            <h2 class="text-xl font-bold mb-4 text-[#3e2723]">Weekly Saga</h2>
-            <div id="story-content" class="text-sm leading-loose text-[#3e2723]">
-                <button onclick="loadStory()" class="w-full py-10 border-2 border-dashed border-[#a1887f] text-[#8d6e63] hover:border-[#3e2723] hover:text-[#3e2723] transition font-serif italic">
-                    Weave the Week's Tale
-                </button>
-            </div>
-        </div>
+ <div class="page">
+    <h2 class="text-xl font-bold mb-4 text-[#3e2723]">Weekly Saga</h2>
+
+    <div class="flex justify-between items-center mb-3">
+        <button class="px-2 hover:text-[#8b4513]" onclick="changeWeek(-1)">← Previous</button>
+        <div id="week-range" class="font-bold text-sm"></div>
+        <button class="px-2 hover:text-[#8b4513]" onclick="changeWeek(1)">Next →</button>
+    </div>
+
+    <div id="weekly-emotions" class="text-sm font-serif italic text-[#3e2723]">
+        Loading...
+    </div>
+</div>
     </div>
 </div>
 
 <script>
     $(document).ready(function () {
-        $("#diary-book").turn({ width: 900, height: 600, autoCenter: true, duration: 1200, gradients: true, elevation: 50 });
+        $("#diary-book").turn({
+            width: 900,
+            height: 600,
+            autoCenter: true,
+            duration: 1200,
+            gradients: true,
+            elevation: 50
+        });
+
+        // Load weekly data after DOM ready
+        loadWeeklyData();
     });
 
     async function loadEntry(dateStr) {
         let container = document.getElementById('entry-content-area');
         let dateHeader = document.getElementById('right-page-date');
         container.style.opacity = '0.5';
+
         try {
             let res = await fetch(`/get_entry/${dateStr}`);
             let data = await res.json();
+
             if (data.found) {
-                let lockedHtml = data.is_locked ? `<div class="stamp" style="border-color: #444; color: #444; transform: rotate(5deg);">ARCHIVED</div>` : ``;
+                let lockedHtml = data.is_locked
+                    ? `<div class="stamp" style="border-color: #444; color: #444;">ARCHIVED</div>`
+                    : ``;
+
                 container.innerHTML = `
                     <div class="h-full flex flex-col fade-in">
                         <div class="flex justify-between items-start mb-4">
                             <div class="stamp">${data.emotion}</div> ${lockedHtml}
                         </div>
-                        <div class="flex-grow font-serif text-lg leading-relaxed text-[#3e2723] italic">
+                        <div class="flex-grow font-serif text-lg italic">
                             ${data.content}
                         </div>
-                        <div class="mt-4 pt-4 border-t border-[#d7ccc8] text-sm italic text-[#8b4513]">
+                        <div class="mt-4 pt-4 border-t text-sm italic">
                             Oracle's Whisper: "${data.motivation}"
                         </div>
                     </div>`;
             } else {
                 container.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center text-center opacity-50 fade-in">
-                        <div class="text-6xl mb-4 grayscale opacity-30">🖋️</div>
-                        <p class="mb-4 font-serif italic text-[#5d4037]">No record for this day.</p>
+                    <div class="h-full flex flex-col items-center justify-center opacity-50 fade-in">
+                        <p>No record for this day.</p>
                     </div>`;
             }
-        } catch (e) { console.error(e); }
+
+        } catch (e) {
+            console.error(e);
+        }
+
         dateHeader.innerText = dateStr;
         container.style.opacity = '1';
     }
 
-    async function loadStory() {
-        let div = document.getElementById('story-content');
-        div.innerHTML = "Weaving...";
-        let res = await fetch('/generate_weekly_story');
+    // ===============================
+    // WEEKLY EMOTION LOGIC
+    // ===============================
+    let weekOffset = 0;
+
+    async function loadWeeklyData() {
+    try {
+        let res = await fetch(`/weekly_emotions?offset=${weekOffset}`);
         let data = await res.json();
-        div.innerHTML = `<p class='font-serif italic'>${data.story}</p>`;
+
+        let container = document.getElementById('weekly-emotions');
+        let range = document.getElementById('week-range');
+
+        range.innerText = `${data.week_start} → ${data.week_end}`;
+
+        let html = "";
+
+        if (!data.emotions || Object.keys(data.emotions).length === 0) {
+            html += "<p>No emotions recorded this week.</p>";
+        } else {
+            for (let [emotion, count] of Object.entries(data.emotions)) {
+                html += `
+                    <div class="flex justify-between border-b py-1">
+                        <span>${emotion}</span>
+                        <span>${count}</span>
+                    </div>`;
+            }
+        }
+
+        // 🔥 Add AI Advice
+        if (data.advice) {
+            html += `
+                <div class="mt-4 p-3 border border-[#a1887f] rounded bg-[#f4e4bc]">
+                    <p class="italic text-sm">${data.advice}</p>
+                </div>`;
+        }
+
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+    function changeWeek(direction) {
+        // Prevent going into future
+        if (weekOffset === 0 && direction === 1) return;
+
+        weekOffset += direction;
+        loadWeeklyData();
     }
 </script>
 {% endblock %}
