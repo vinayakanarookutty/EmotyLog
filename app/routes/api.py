@@ -48,38 +48,78 @@ def chat_assistant():
 
 @api_bp.route('/get_entry/<date_str>')
 def get_entry(date_str):
-    if 'user_id' not in session: return jsonify({'error': 'auth'})
-    
-    # Parse the date string to a datetime object
-    try:
-        query_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
-    except ValueError:
-        return jsonify({'error': 'Invalid date format'})
 
-    # Find entry for this specific day (ignoring time)
-    # We use a range to cover the whole 24 hours of that day
+    if 'user_id' not in session:
+        return jsonify({'error': 'auth'})
+
+    try:
+        query_date = datetime.datetime.strptime(
+            date_str,
+            "%Y-%m-%d"
+
+        )
+
+    except ValueError:
+        return jsonify({
+            'error': 'Invalid date format'
+        })
+
+    # Full day range
     next_day = query_date + datetime.timedelta(days=1)
-    
+
     entry = mongo.db.entries.find_one({
         'user_id': session['user_id'],
-        'date': {'$gte': query_date, '$lt': next_day}
+        'date': {
+            '$gte': query_date,
+            '$lt': next_day
+        }
     })
-    
+
     if entry:
-        # Check if editable (2 day rule)
-        # Note: We use the *simulated* current date for the rule check
+
         simulated_now = get_current_date()
-        is_locked = (simulated_now - entry['date']).days >= 2
+
+        is_locked = (
+            simulated_now - entry['date']
+        ).days >= 2
+
+        # Parse suggestions safely
+        suggestions = []
+
+        try:
+            suggestions = json.loads(
+                entry.get('suggestions', '[]')
+            )
+
+        except:
+            suggestions = []
 
         return jsonify({
+
             'found': True,
-            'content': entry['content'],
-            'emotion': entry.get('emotion', 'Neutral'),
-            'motivation': entry.get('motivation', ''),
+
+            'content': entry.get('content', ''),
+
+            'emotion': entry.get(
+                'emotion',
+                'Neutral'
+            ),
+
+            'motivation': entry.get(
+                'motivation',
+                ''
+            ),
+
+            'suggestions': suggestions,
+
             'is_locked': is_locked
         })
+
     else:
-        return jsonify({'found': False})
+
+        return jsonify({
+            'found': False
+        })
 
 @api_bp.route('/set_time', methods=['POST'])
 def set_time():

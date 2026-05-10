@@ -3,6 +3,7 @@ from flask import session
 import google.generativeai as genai
 from PIL import Image
 import io
+import json
 # Time Travel Helper
 def get_current_date():
     if 'simulated_date' in session:
@@ -17,17 +18,26 @@ def get_ai_emotion_and_motivation(text):
     model = genai.GenerativeModel('gemini-2.5-flash')
 
     prompt = f"""
-    Analyze this diary entry:
+    Analyze this diary entry carefully.
 
+    Diary Entry:
     "{text}"
 
-    Choose ONLY ONE emotion from:
-    Happy, Sadness, Anger, Fear, Love, Neutral
+    Detect the MOST ACCURATE emotion.
 
-    Return ONLY JSON:
+    Choose ONLY ONE emotion from:
+    Happy, Sadness, Anger, Fear, Love, Anxiety, Stress, Lonely,
+    Excited, Motivated, Confused, Hopeful, Tired, Grateful, Neutral
+
+    Return ONLY valid JSON in this format:
     {{
-        "emotion": "Happy/Sadness/Anger/Fear/Love/Neutral",
-        "motivation": "short motivational quote"
+        "emotion": "emotion_name",
+        "motivation": "short motivational quote",
+        "suggestions": [
+            "suggestion 1",
+            "suggestion 2",
+            "suggestion 3"
+        ]
     }}
     """
 
@@ -35,35 +45,110 @@ def get_ai_emotion_and_motivation(text):
         response = model.generate_content(prompt)
         output = response.text.strip()
 
-        # 🔥 Clean markdown if Gemini adds ```json
+        # Remove markdown if Gemini adds ```json
         if output.startswith("```"):
             output = output.replace("```json", "").replace("```", "").strip()
 
         data = json.loads(output)
 
         emotion = data.get("emotion", "Neutral")
-        motivation = data.get("motivation", "Keep moving forward.")
+        motivation = data.get(
+            "motivation",
+            "Every day is a new beginning."
+        )
+
+        suggestions = data.get(
+            "suggestions",
+            [
+                "Take a short break.",
+                "Drink some water and relax.",
+                "Focus on one small positive step today."
+            ]
+        )
 
     except Exception as e:
         print("AI ERROR:", e)
-        emotion = "Neutral"
-        motivation = "Keep moving forward."
 
-    # ✅ Safety override (VERY IMPORTANT)
+        emotion = "Neutral"
+
+        motivation = "Every day is a new beginning."
+
+        suggestions = [
+            "Take a deep breath.",
+            "Write down your thoughts.",
+            "Do something that makes you smile."
+        ]
+
+    # Safety override
     emotion = override_emotion_if_needed(text, emotion)
 
-    return emotion, motivation
+    return emotion, motivation, suggestions
+
 
 def override_emotion_if_needed(text, ai_emotion):
     text = text.lower()
 
+    emotion_keywords = {
+        "Sadness": [
+            "sad", "cry", "depressed", "lonely",
+            "hurt", "broken", "upset"
+        ],
+
+        "Happy": [
+            "happy", "joy", "excited",
+            "great", "awesome", "smile"
+        ],
+
+        "Anger": [
+            "angry", "mad", "frustrated",
+            "annoyed", "furious"
+        ],
+
+        "Fear": [
+            "fear", "scared", "terrified",
+            "afraid"
+        ],
+
+        "Anxiety": [
+            "anxious", "worried", "panic",
+            "nervous", "overthinking"
+        ],
+
+        "Stress": [
+            "stress", "pressure",
+            "overwhelmed", "burnout"
+        ],
+
+        "Love": [
+            "love", "care", "romantic",
+            "relationship"
+        ],
+
+        "Motivated": [
+            "motivated", "determined",
+            "focused", "productive"
+        ],
+
+        "Tired": [
+            "tired", "sleepy",
+            "exhausted", "drained"
+        ],
+
+        "Hopeful": [
+            "hope", "better", "future",
+            "improve"
+        ],
+
+        "Grateful": [
+            "grateful", "thankful",
+            "blessed", "appreciate"
+        ]
+    }
+
     if ai_emotion == "Neutral":
-        if any(w in text for w in ["sad", "cry", "depressed", "lonely"]):
-            return "Sadness"
-        if any(w in text for w in ["happy", "joy", "excited"]):
-            return "Happy"
-        if any(w in text for w in ["angry", "mad", "frustrated"]):
-            return "Anger"
+        for emotion, keywords in emotion_keywords.items():
+            if any(word in text for word in keywords):
+                return emotion
 
     return ai_emotion
 # Weekly Story Helper

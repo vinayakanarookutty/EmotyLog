@@ -95,8 +95,27 @@
                         {{ today_entry.content }}
                     </div>
                     <div class="mt-4 pt-4 border-t border-[#d7ccc8] text-sm italic text-[#8b4513]">
-                        Oracle's Whisper: "{{ today_entry.motivation }}"
-                    </div>
+    <p class="mb-3">
+        Oracle's Whisper: "{{ today_entry.motivation }}"
+    </p>
+
+    {% if today_entry.suggestions %}
+         <div class="mt-3">
+            <h4 class="font-bold text-[#5d4037] mb-2 not-italic">
+                Gentle Guidance
+            </h4>
+
+            <ul class="space-y-2 not-italic text-[#3e2723]">
+                {% for s in today_entry.suggestions %}
+                    <li class="flex items-start gap-2">
+                        <span class="text-[#8b4513]">✦</span>
+                        <span>{{ s }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</div>
                 </div>
                 {% else %}
                 <div class="h-full flex flex-col items-center justify-center text-center opacity-50">
@@ -139,37 +158,81 @@
         loadWeeklyData();
     });
 
+    // =========================
+    // LOAD ENTRY
+    // =========================
     async function loadEntry(dateStr) {
+
         let container = document.getElementById('entry-content-area');
         let dateHeader = document.getElementById('right-page-date');
+
         container.style.opacity = '0.5';
 
         try {
+
             let res = await fetch(`/get_entry/${dateStr}`);
             let data = await res.json();
 
             if (data.found) {
+
                 let lockedHtml = data.is_locked
-                    ? `<div class="stamp" style="border-color: #444; color: #444;">ARCHIVED</div>`
+                    ? `<div class="stamp" style="border-color:#444;color:#444;">ARCHIVED</div>`
                     : ``;
+
+                let suggestionsHtml = "";
+
+                if (data.suggestions && data.suggestions.length > 0) {
+
+                    suggestionsHtml = `
+                        <div class="suggestion-card">
+                            <h4 class="font-bold mb-3 not-italic">
+                                Gentle Guidance
+                            </h4>
+
+                            <ul>
+                                ${data.suggestions.map(s => `
+                                    <li class="suggestion-item">
+                                        <span>✦</span>
+                                        <span>${s}</span>
+                                    </li>
+                                `).join("")}
+                            </ul>
+                        </div>
+                    `;
+                }
 
                 container.innerHTML = `
                     <div class="h-full flex flex-col fade-in">
+
                         <div class="flex justify-between items-start mb-4">
-                            <div class="stamp">${data.emotion}</div> ${lockedHtml}
+                            <div class="stamp">${data.emotion}</div>
+                            ${lockedHtml}
                         </div>
+
                         <div class="flex-grow font-serif text-lg italic">
                             ${data.content}
                         </div>
+
                         <div class="mt-4 pt-4 border-t text-sm italic">
-                            Oracle's Whisper: "${data.motivation}"
+
+                            <p class="mb-3">
+                                Oracle's Whisper:
+                                "${data.motivation}"
+                            </p>
+
+                            ${suggestionsHtml}
+
                         </div>
-                    </div>`;
+                    </div>
+                `;
+
             } else {
+
                 container.innerHTML = `
                     <div class="h-full flex flex-col items-center justify-center opacity-50 fade-in">
                         <p>No record for this day.</p>
-                    </div>`;
+                    </div>
+                `;
             }
 
         } catch (e) {

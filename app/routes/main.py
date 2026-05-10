@@ -4,32 +4,74 @@ import datetime  # <--- THIS WAS MISSING
 from app.extensions import mongo
 from app.utils import get_current_date, get_ai_emotion_and_motivation
 from app.utils import get_weekly_advice
+import json
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/dashboard')
 def dashboard():
-    if 'user_id' not in session: return redirect(url_for('auth.login'))
-    
+
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
     current_date = get_current_date()
+
     user_id = session['user_id']
-    
-    # 1. Define the start and end of the specific 'current_date'
-    # We use the imported 'datetime' module here
-    start_of_day = datetime.datetime(current_date.year, current_date.month, current_date.day)
+
+    # Start + End of current day
+    start_of_day = datetime.datetime(
+        current_date.year,
+        current_date.month,
+        current_date.day
+    )
+
     end_of_day = start_of_day + datetime.timedelta(days=1)
 
-    # 2. Find the SPECIFIC entry for this date
+    # Get today's entry
     today_entry = mongo.db.entries.find_one({
         'user_id': user_id,
-        'date': {'$gte': start_of_day, '$lt': end_of_day}
+        'date': {
+            '$gte': start_of_day,
+            '$lt': end_of_day
+        }
     })
-    
-    # 3. Get all entries (for the list/timeline if needed)
-    entries = list(mongo.db.entries.find({'user_id': user_id}).sort('date', -1))
-    
-    # Pass 'today_entry' explicitly to the template
-    return render_template('dashboard.html', entries=entries, current_date=current_date, today_entry=today_entry)
 
+    # Decode suggestions JSON
+    if today_entry and 'suggestions' in today_entry:
+
+        try:
+            today_entry['suggestions'] = json.loads(
+                today_entry['suggestions']
+            )
+
+        except:
+            today_entry['suggestions'] = []
+
+    # Get all entries
+    entries = list(
+        mongo.db.entries.find({
+            'user_id': user_id
+        }).sort('date', -1)
+    )
+
+    # Decode suggestions for all entries too
+    for entry in entries:
+
+        if 'suggestions' in entry:
+
+            try:
+                entry['suggestions'] = json.loads(
+                    entry['suggestions']
+                )
+
+            except:
+                entry['suggestions'] = []
+
+    return render_template(
+        'dashboard.html',
+        entries=entries,
+        current_date=current_date,
+        today_entry=today_entry
+    )
 @main_bp.route('/write', methods=['GET', 'POST'])
 def write():
     if 'user_id' not in session: return redirect(url_for('auth.login'))
@@ -39,7 +81,7 @@ def write():
 
     if request.method == 'POST':
         content = request.form['content']
-        emotion, motivation = get_ai_emotion_and_motivation(content)
+        emotion, motivation, suggestions = get_ai_emotion_and_motivation(content)
         
         entry = {
             'user_id': session['user_id'],
@@ -47,6 +89,7 @@ def write():
             'date': current_date, # Use the date variable
             'emotion': emotion.strip(),
             'motivation': motivation.strip(),
+            'suggestions':json.dumps(suggestions),
             'type': 'text'
         }
         mongo.db.entries.insert_one(entry)
